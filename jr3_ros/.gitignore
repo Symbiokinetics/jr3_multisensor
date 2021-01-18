@@ -1,0 +1,5 @@
+*.o
+*.swp
+collector
+jr3_fifo
+

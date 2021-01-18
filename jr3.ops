@@ -1,0 +1,19 @@
+import("rtt_ros");
+ros.import("jr3_task");
+
+displayComponentTypes();
+
+loadComponent("jr30", "Jr3_task");
+jr30.prepareDriver("jr30");
+jr30.resetOffsets();
+stream("jr30.ForceOutputPort", ros.topic("/ForceOutputPort0"));
+jr30.setPeriod(1);
+
+loadComponent("jr31", "Jr3_task");
+jr31.prepareDriver("jr31");
+jr31.resetOffsets();
+stream("jr31.ForceOutputPort", ros.topic("/ForceOutputPort1"));
+jr31.setPeriod(1);
+
+jr30.start();
+jr31.start();
