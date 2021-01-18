@@ -1,23 +1,94 @@
-This is a linux driver for the JR3 force/torque sensor (PCI card), under 2.4 kernels. Currently, two cards are supported:
+Supported devices
 
-- Single channel PCI
-- Double channel PCI (for two sensors, or one 12DOF sensor)
+The driver supports a number of PCI boards including single sensor boards and double sensor board. Currently
+devices with following PCI vendor and PCI device numbers were successfully tested:
 
-Only filtered reads and zero offsets setup are supported.
+PCI vendor      PCI device Type
+0x1762 0x1111   Single sensor
+0x1762 0x3111   Single sensor
+0x1762 0x3112   Double sensor
 
-For compiling it, edit jr3pci-driver.h and set PCI_DEVICE_ID_JR3 to be that of your card.
-Then, edit the Makefile, and set the path to your kernel sources.
-Finally, type 'make'.
+Prerequisites
 
-The module is compiled in the file jr3pci-driver.o. For inserting it into the kernel, type 'insmod ./jr3pci-driver.o' for kernels <=2.4, or 'insmod ./jr3pci-driver.ko' for 2.6 kernels
+Before using the driver it is advised to patch kernel with preempt_rt patch. It can be found here. However,
+Realtime kernel is not necessary but is still advised for developing realtime applications such as applications
+which require communication with hardware to be run in realtime.
 
-After inserting it, look at the green leds of your PCI card. If they are on, you're in chance!!! :)
 
-Also included is a simple test program 'jr3mon' which reads force values infinitelly. For user space programs to work, you must first create the device file into /dev directory with the command:
+Using the driver
 
-mknod /dev/jr3 c 39 0
+Compilation
+Before compiling the driver clean the project with:
+make clean
 
-Alternatively, you can try 'make node'.
+After that you can build the project with the following command:
+make all
 
-Problems, suggestions or anything else: mprats@icc.uji.es
+Above will compile the driver and a file jr3pci-driver.ko will be created (a kernel module). Also a simple testing
+application, called app, will be also created.
 
+Loading the jr3pci-driver module
+
+Before loading the module into kernel space please remove jr3_pci or any other driver which might use the same
+hardware. This driver is available in standard kernel. Removing jr3_pci driver can be done with below command:
+rmmod jr3_pci
+
+The driver can be loaded with the following command:
+insmod ./jr3-jr3pci-driver.ko
+
+After loading the driver system is creating appropriate entry in /proc/devices file containing major number of the
+driver. A new link to the device can be created using mknod command.
+
+Additional scripts
+
+Along with the driver comes a loading script. It is recommended to use this script instead of preparing the driver
+manually. The load.sh does the following things:
+1. Finding if jr3_pci driver is loaded and removes it.
+2. Finding if jr3pci_driver driver is loaded and removes it.
+3. Determines number of devices found in the system.
+4. Creates character devices for each sensor.
+
+Each device is created in /dev directory with name
+/dev/jr3*X*
+where X is the numer of next device starting from 0.
+
+Examples
+Testing application app is created during the driver compilation. It allows user to test a jr3 device. This program
+can be executed in following manner:
+./app /dev/jr30 10
+
+This will open /dev/jr30 device and will output 10 measurements with 1 second interval. The application performs
+automatic check if device is a single or double sensor board. In later case it will automatically measure second
+device jr3 sensor attached to the board.
+
+Ommiting the last argument will cause the application to read data from jr3 sensor indefinitely. Executing the app
+without any argument will open the /dev/jr30 by default and start reading force and torque from the jr3 sensor
+indefinitely.
+
+API
+
+Along with the driver a simple API for the jr3 sensor boards was created. It allows to open/close the device, send
+ioctls to the device and determine if the sensor board is a single sensor board or supports two sensors or one
+with 16 DoF.
+
+Through the following commands user can retrieve data or control the jr3 sensor board:
+
+Command Description
+IOCTLN_JR3_RESET   reset device
+IOCTLN_JR3_FILTER0 read data using no filter
+IOCTLN_JR3_FILTER1 read data using filter option number 1
+IOCTLN_JR3_FILTER2
+IOCTLN_JR3_FILTER3
+IOCTLN_JR3_FILTER4
+IOCTLN_JR3_FILTER5
+IOCTLN_JR3_FILTER6
+IOCTLN_JR3_ZEROOFFS clear offsets
+IOCTLN_JR3_GET_FULL_SCALES get scaling factors of the device
+IOCTLN_JR3_TYPE get board type (single (1) or dual (2) sensor)
+where N is a number 0 or 1. If a single sensor board is accessed N=0. However, when the double sensor board is
+accessed to read first sensor N=0 and to read second sensor N=1.
+
+Contributors:
+Project Manager: Tanya Grinberg
+Lead Developer: Wojciech Domski
+Systems Architect: Alex Khusidman
